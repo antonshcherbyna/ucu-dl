@@ -95,6 +95,77 @@ def test(args, model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 
+def check_consistency(model, version):
+    # random tensor for test
+    x_in = torch.rand([1, 1, 28, 28])
+    x_in.to(model.device)
+    
+    # conv weights
+    conv_weight = model.conv_layer.weight
+    conv_bias = model.conv_layer.bias
+    
+    # fc weights
+    weight = model.fc_layer1.weight
+    bias = model.fc_layer1.bias
+    
+    if version == 'self-scalar':
+        
+        # apply conv
+        z_conv = model.conv_layer(x_in)
+        z_conv_scalar = conv2d_scalar(x_in, conv_weight, conv_bias, model.device)
+        assert diff_mse(z_conv, z_conv_scalar) < 1e6
+
+        # apply maxpool
+        z_pool = F.max_pool2d(z_conv, 2, 2)
+        z_pool_scalar = pool2d_scalar(z_conv_scalar, model.device)
+        assert diff_mse(z_pool, z_pool_scalar) < 1e6
+
+        # apply reshape
+        z_reshape = z_pool.view(-1, 20*12*12)
+        z_reshape_scalar = reshape_scalar(z_pool_scalar, model.device)
+        assert diff_mse(z_reshape, z_reshape_scalar) < 1e6
+
+        # apply fc
+        z_fc = model.fc_layer1(z_reshape)
+        z_fc_scalar = fc_layer_scalar(z_reshape_scalar, weight, bias, model.device)
+        assert diff_mse(z_fc, z_fc_scalar) < 1e6
+
+        # apply relu
+        z_relu = F.relu(z_fc)
+        z_relu_scalar = relu_scalar(z_fc_scalar, model.device)
+        assert diff_mse(z_relu, z_relu_scalar) < 1e6
+
+    elif version == 'self-vector':
+        
+        # apply conv
+        z_conv = model.conv_layer(x_in)
+        z_conv_vector = conv2d_vector(x_in, conv_weight, conv_bias, model.device)
+        assert diff_mse(z_conv, z_conv_vector) < 1e6
+
+
+        # apply maxpool
+        z_pool = F.max_pool2d(z_conv, 2, 2)
+        z_pool_vector = pool2d_vector(z_conv_vector, model.device)
+        assert diff_mse(z_pool, z_pool_vector) < 1e6
+
+        # apply reshape
+        z_reshape = z_pool.view(-1, 20*12*12)
+        z_reshape_vector = reshape_vector(z_pool_vector, model.device)
+        assert diff_mse(z_reshape, z_reshape_vector) < 1e6
+
+
+        # apply fc
+        z_fc = model.fc_layer1(z_reshape)
+        z_fc_vector = fc_layer_vector(z_reshape_vector, weight, bias, model.device)
+        assert diff_mse(z_fc, z_fc_vector) < 1e6
+
+
+        # apply relu
+        z_relu = F.relu(z_fc)
+        z_relu_vector = relu_vector(z_fc_vector, model.device)
+        assert diff_mse(z_relu, z_relu_vector) < 1e6
+
+
 def main(args):
     torch.manual_seed(args.seed)
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -115,6 +186,11 @@ def main(args):
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
     model = SimpleConvNet(args.version, device)
+    model.to(device)
+
+    if args.check_consistency and args.version is not 'torch':
+        check_consistency(model, args.version)
+
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
@@ -126,9 +202,11 @@ def main(args):
 if __name__ == '__main__':
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--check_consistency', action='store_true', default=False,
+                        help='If true then check for equality of all implementations will be done.')
     parser.add_argument('--version', type=str, default='self-vector', metavar='N',
                         help='version of implementation (\'torch\', \'self-vector\' or \'self-scalar\')')
-    parser.add_argument('--batch-size', type=int, default=1, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
                         help='input batch size for testing (default: 1000)')

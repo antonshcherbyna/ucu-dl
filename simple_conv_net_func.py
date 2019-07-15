@@ -60,40 +60,44 @@ def conv2d_vector(x_in, conv_weight, conv_bias, device):
 
 
 def im2col(X, kernel_size, output_size, pool, device):
-    # get shape
+    # get shape of the input tensor
     batch_size, num_channels_in, height, width = X.size()
     
-    dim_out = output_size
+    # apply im2col trick 
     if pool:
         i0 = torch.arange(kernel_size).repeat(1, kernel_size).view(-1, kernel_size).transpose(0, 1).contiguous()
-        i1 = torch.arange(0, height, 2).repeat(1, dim_out).view(-1, dim_out).transpose(0, 1).contiguous()
+        i1 = torch.arange(0, height, 2).repeat(1, output_size).view(-1, output_size).transpose(0, 1).contiguous()
         i = i0.view(-1, 1) + i1.view(1, -1)
         j0 = torch.arange(kernel_size).repeat(kernel_size)
-        j1 = torch.arange(0, height, 2).repeat(dim_out)
+        j1 = torch.arange(0, height, 2).repeat(output_size)
         j = j0.view(-1, 1) + j1.view(1, -1)
         return X[:, :, i, j]
     else:
         i0 = torch.arange(kernel_size).repeat(1, kernel_size).view(-1, kernel_size).transpose(0,1).repeat(1, num_channels_in)
-        i1 = torch.arange(dim_out).repeat(1, dim_out).view(-1, dim_out).transpose(0, 1).contiguous()
+        i1 = torch.arange(output_size).repeat(1, output_size).view(-1, output_size).transpose(0, 1).contiguous()
         i = i0.view(-1, 1) + i1.view(1, -1)
         j0 = torch.arange(kernel_size).repeat(kernel_size * num_channels_in)
-        j1 = torch.arange(dim_out).repeat(dim_out)
+        j1 = torch.arange(output_size).repeat(output_size)
         j = j0.view(-1, 1) + j1.view(1, -1)
         k = torch.arange(num_channels_in).repeat(1, kernel_size*kernel_size).view(-1, kernel_size*kernel_size).transpose(0, 1).contiguous().view(-1, 1)
         return X[:, k, i, j]
     
 
 def conv_weight2rows(conv_weight):
+    # get shape of the weights
     num_channels_out, num_channels_in, filter_height, filter_width = conv_weight.size()
+
+    # reshape weights
     conv_weight_rows = conv_weight.view(num_channels_out, num_channels_in * filter_height * filter_width)
+
     return conv_weight_rows
 
 
 def pool2d_scalar(a, device):
-    # get shape of input tensor
+    # get shape of the input tensor
     batch_size, num_channels, height_in, width_in = a.size()
 
-    # compute shape of output tensor
+    # compute shape of the output tensor
     height_out = int((height_in - 2)/2) + 1
     width_out = int((height_in - 2)/2) + 1
 
@@ -114,10 +118,10 @@ def pool2d_scalar(a, device):
 
 
 def pool2d_vector(a, device):
-    # get shape
+    # get shape of the input tensor
     batch_size, num_channels, height_in, width_in = a.size()
     
-    # compute shape of output tensor
+    # compute shape of the output tensor
     height_out = int((height_in - 2)/2) + 1
     width_out = int((height_in - 2)/2) + 1
 
@@ -131,7 +135,7 @@ def pool2d_vector(a, device):
 
 
 def relu_scalar(a, device):
-    # get shape
+    # get shape of the input tensor
     shape = a.size()
     
     # flatten tensor for better performance
@@ -159,7 +163,7 @@ def reshape_vector(a, device):
 
 
 def reshape_scalar(a, device):
-    # gets shape
+    # get shape of the input tensor
     num_batches, num_channels, height, width = a.size()
     
     # compute new dimension
