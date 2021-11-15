@@ -1,7 +1,7 @@
 # Deep Learning
 
 ### Goal 
-Main goal of this project is to replace standard Pytorch implementation by custom methods on matrix level in both scalar and vector form.
+Main goal of this project is to replace standard Pytorch implementation of typical NN layers by custom methods in both scalar and vector form.
 
 ### Network structure
 Implemented network conists from: 
