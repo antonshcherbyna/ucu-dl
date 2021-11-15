@@ -1,4 +1,4 @@
-# Deep Learning. Part Two.
+# Deep Learning
 
 ### Goal 
 Main goal of this project is to replace standard Pytorch implementation by custom methods on matrix level in both scalar in vector form.
